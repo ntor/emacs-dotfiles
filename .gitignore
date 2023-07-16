@@ -1,0 +1,6 @@
+/elpa/
+/.cache/
+/*.el
+/history
+/transient/
+/recentf
