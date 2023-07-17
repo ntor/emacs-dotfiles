@@ -52,6 +52,7 @@
 	 ("C-c k" . kill-buffer-and-window)
 	 ("C-x k" . kill-this-buffer)
          ("C-c f r" . recentf)
+         ("s-i" . up-list)
          ("M-[" . (lambda () (interactive) (scroll-down-line 3)))
          ("M-]" . (lambda () (interactive) (scroll-up-line 3)))
 	 ([swipe-left] . nil)
@@ -153,6 +154,7 @@
   (setq LaTeX-electric-left-right-brace t)
   (setq TeX-electric-math (cons "$" "$"))
   (setq TeX-parse-self t)
+  (setq reftex-plug-into-AUCTeX t)
   (setq TeX-newline-function 'reindent-then-newline-and-indent)
   (setq (TeX-view-program-selection
          '((output-dvi "open")
