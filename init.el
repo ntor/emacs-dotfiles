@@ -137,6 +137,10 @@
 (use-package tex
   :ensure auctex
 
+  :bind (
+         ("M-=" . (lambda () (interactive) (save-buffer) (TeX-command "LaTeX" 'TeX-master-file)))
+         )
+
   :hook
   ((LaTeX-mode . tex-pdf-mode)
    (LaTeX-mode . TeX-source-correlate-mode)
@@ -156,10 +160,10 @@
   (setq TeX-parse-self t)
   (setq reftex-plug-into-AUCTeX t)
   (setq TeX-newline-function 'reindent-then-newline-and-indent)
-  (setq (TeX-view-program-selection
+  (setq TeX-view-program-selection
          '((output-dvi "open")
            (output-pdf "Skim")
-           (output-html "open"))))
+           (output-html "open")))
   (setq TeX-view-program-list
         '(("Skim"
            "/Applications/Skim.app/Contents/SharedSupport/displayline -g %n %o %b")))
