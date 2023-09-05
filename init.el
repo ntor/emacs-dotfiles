@@ -43,7 +43,12 @@
   ((after-init . recentf-mode))
   :config
   (electric-pair-mode)
-  
+  (pixel-scroll-precision-mode)
+  (global-auto-revert-mode 1)
+  (setq auto-revert-verbose nil)
+  (setq scroll-conservatively 101)
+  (setq scroll-margin 1)
+
   :bind (
 	 ("s-x" . execute-extended-command)
 	 ("M-o" . other-window)
@@ -69,9 +74,9 @@
 ;; (customize-set-variable 'scroll-margin 0)
 ;; (customize-set-variable 'scroll-preserve-screen-position t)
 
-(global-set-key (kbd "s-W") 'delete-frame) ; ⌘-W = Close window
-(global-set-key (kbd "s-}") 'tab-bar-switch-to-next-tab) ; ⌘-} = Next tab
-(global-set-key (kbd "s-{") 'tab-bar-switch-to-prev-tab) ; ⌘-{ = Previous tab
+;; (global-set-key (kbd "s-W") 'delete-frame) ; ⌘-W = Close window
+;; (global-set-key (kbd "s-}") 'tab-bar-switch-to-next-tab) ; ⌘-} = Next tab
+;; (global-set-key (kbd "s-{") 'tab-bar-switch-to-prev-tab) ; ⌘-{ = Previous tab
 (global-set-key (kbd "s-t") 'tab-bar-new-tab) ;⌘-t = New tab
 (global-set-key (kbd "s-w") 'tab-bar-close-tab) ; ⌘-w = Close tab
 
@@ -90,6 +95,12 @@
   )
 
 (use-package visual-fill-column
+  )
+
+(use-package exec-path-from-shell
+  :init
+  (when (memq window-system '(mac ns x))
+    (exec-path-from-shell-initialize))
   )
 
 (use-package adaptive-wrap)
@@ -130,8 +141,9 @@
 
 (use-package consult
   :bind (
-         ("C-x b" . consult-buffer)))
-
+         ("C-x b" . consult-buffer)
+         ("s-m" . consult-imenu))
+)
 (use-package eglot)
 
 (use-package tex
@@ -152,7 +164,8 @@
 
   :config
   (setq TeX-source-correlate-method 'synctex)
-  (setq TeX-source-correlate-start-server nil)
+  (setq TeX-source-correlate-start-server t)
+  (setq TeX-PDF-mode t)
   (setq TeX-save-query nil)
   (setq TeX-electric-sub-and-superscript t)
   (setq LaTeX-electric-left-right-brace t)
@@ -186,6 +199,20 @@
   (setq cdlatex-simplify-sub-super-scripts nil)
   )
 
+(use-package citar
+  :bind
+  ("C-c b" . citar-open)
+  ("C-c i" . citar-insert-citation)
+  :custom
+  (citar-bibliography '("~/Documents/library/references/references.bib"))
+  :hook
+  (LaTeX-mode . citar-capf-setup)
+  (org-mode . citar-capf-setup)
+  :config
+  (push '("pdf" . citar-file-open-external) citar-file-open-functions))
+
+;;(use-package pdf-tools)
+
 (use-package avy
   :bind (
 	 ("s-;" . avy-goto-char-timer)
@@ -198,6 +225,17 @@
   (("C-c n d" . deft))
   :config
   (setq deft-directory "~/org/notes/")
+  (setq deft-default-extension "org"
+        ;; de-couples filename and note title:
+        deft-use-filename-as-title nil
+        deft-use-filter-string-for-filename t
+        ;; disable auto-save
+        deft-auto-save-interval -1.0
+        ;; converts the filter string into a readable file-name using kebab-case:
+        deft-file-naming-rules
+        '((noslash . "-")
+          (nospace . "-")
+          (case-fn . downcase)))
   )
 
 (use-package highlight-indent-guides
@@ -266,6 +304,59 @@
                                                        (:kernel . "python3")))
   )
 
+(use-package python-mode
+  :bind
+  (:map python-mode-map
+        ("C-c C-n" . numpydoc-generate)
+        ("C-c e n" . flymake-goto-next-error)
+        ("C-c e p" . flymake-goto-prev-error)
+        )
+  )
+
+(use-package pyvenv
+  :bind
+  (:map pyvenv-mode-map
+        ("C-c p a" . pyvenv-activate)
+        ("C-c p d" . pyvenv-deactivate)
+        ("C-c p w" . pyvenv-workon)
+        )
+  )
+
+;; (when (featurep 'anaconda-mode)
+;;   (add-hook 'python-mode-hook #'anaconda-mode))
+(use-package anaconda-mode)
+
+(when (featurep 'blacken)
+  (add-hook 'python-mode-hook #'blacken-mode))
+
+(add-hook 'python-mode-hook #'eldoc-mode)
+
+(when (featurep 'eglot)
+  (add-hook 'python-mode-hook #'eglot-ensure))
+
+(when (featurep 'pyvenv)
+  (add-hook 'python-mode-hook #'pyvenv-mode)
+  (add-hook 'python-mode-hook #'pyvenv-tracking-mode))
+
+(when (featurep 'pyvenv)
+  ;; restart python when the virtual environment changes
+  (add-hook 'pyvenv-post-activate-hooks #'pyvenv-restart-python)
+
+  ;; default to the commonly used "venv" folder for the virtual
+  ;; environment
+  (customize-set-variable 'pyvenv-default-virtual-env-name "venv"))
+
+(customize-set-variable 'python-indent-guess-indent-offset-verbose nil)
+
+(when (featurep 'numpydoc)
+  (customize-set-variable 'numpydoc-insert-examples-block nil)
+  (customize-set-variable 'numpydoc-template-long nil))
+
+(use-package blacken)
+(use-package numpydoc)
+
+
+
 (defun pw/notebook-full-size ()
   (interactive)
   (set-frame-parameter nil 'height 53)
@@ -308,8 +399,6 @@
 ;; Revert Dired and other buffers
 (customize-set-variable 'global-auto-revert-non-file-buffers t)
 
-;; Revert buffers when the underlying file has changed
-(global-auto-revert-mode 1)
 
 ;; Typed text replaces the selection if the selection is active,
 ;; pressing delete or backspace deletes the selection.
@@ -332,18 +421,14 @@
 
 
 ;; Make scrolling less stuttered
-(setq auto-window-vscroll nil)
-(customize-set-variable 'fast-but-imprecise-scrolling t)
-(customize-set-variable 'scroll-conservatively 101)
-(customize-set-variable 'scroll-margin 0)
-(customize-set-variable 'scroll-preserve-screen-position t)
+;; (setq auto-window-vscroll nil)
+;; (customize-set-variable 'fast-but-imprecise-scrolling t)
+;; (customize-set-variable 'scroll-preserve-screen-position t)
 
 ;; Better support for files with long lines
 ;; (setq-default bidi-paragraph-direction 'left-to-right)
 ;; (setq-default bidi-inhibit-bpa t)
 ;; (global-so-long-mode 1)
-
-
 
 
 ;; -----------------------------
@@ -367,7 +452,7 @@
  '(ns-right-alternate-modifier nil)
  '(ns-right-command-modifier 'meta)
  '(package-selected-packages
-   '(auctex-latexmk consult adaptive-wrap visual-fill-column visual-fill-column-mode marginalia orderless magit nerd-icon expand-region iy-go-to-char treemacs highlight-indent-guides deft iv-go-to-char avy eglot vertico corfu use-package)))
+   '(python-mode pyvenv numpydoc blacken anaconda anaconda-mode exec-path-from-shell pdf-tools auctex-latexmk consult adaptive-wrap visual-fill-column visual-fill-column-mode marginalia orderless magit nerd-icon expand-region iy-go-to-char treemacs highlight-indent-guides deft iv-go-to-char avy eglot vertico corfu use-package)))
 
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
