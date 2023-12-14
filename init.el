@@ -1,10 +1,11 @@
 ;; Simple Emacs Config
 
-
-;; Basic Visual Properties
-(load-theme 'modus-operandi)
-(set-face-attribute 'default nil :font "JetBrains Mono" :height 120)
+(load-theme 'modus-vivendi)
 (set-face-attribute 'fringe nil :background nil)
+(add-hook 'modus-themes-after-load-theme-hook
+          (lambda () (set-face-attribute 'fringe nil :background nil)))
+
+(set-face-attribute 'default nil :font "JetBrains Mono" :height 120)
 (set-frame-parameter nil 'height 52)
 (set-frame-parameter nil 'width 103)
 (set-frame-position (selected-frame) 0 0)
@@ -14,6 +15,57 @@
 (tool-bar-mode -1)
 (tooltip-mode -1)
 (setq ring-bell-function 'ignore)
+
+;; Window Setup
+;; ------------
+
+(defun pw/notebook-full-size ()
+  (interactive)
+  ;; (set-frame-parameter nil 'height 53)
+  (toggle-frame-maximized)
+  (set-frame-parameter nil 'width 203))
+
+(defun pw/notebook-slim-size ()
+  (interactive)
+  ;; (set-frame-parameter nil 'height 53)
+  (toggle-frame-maximized)
+  (set-frame-parameter nil 'width 103))
+
+(defun pw/desktop-slim-size ()
+  (interactive)
+  (toggle-frame-maximized)
+  (set-frame-parameter nil 'width 140))
+
+(defun pw/desktop-full-size ()
+  (interactive)
+  (toggle-frame-maximized)
+  (set-frame-parameter nil 'width 271))
+
+(defun pw/move-frame-top-left ()
+  (interactive)
+  (set-frame-position (selected-frame) 0 0))
+
+(defun pw/insert-math-parentheses () (interactive)
+       (insert "\\(  \\)")
+       (backward-char 3))
+
+(add-hook 'window-setup-hook
+          'pw/notebook-slim-size 'append)
+(add-hook 'window-setup-hook
+          'pw/move-frame-top-left 'append)
+
+
+(defun backup-file-name (fpath)
+  "Return a new file path of a given file path.
+If the new path's directories does not exist, create them."
+  (let* ((backupRootDir "~/.emacs.d/emacs-backup/")
+         (filePath (replace-regexp-in-string "[A-Za-z]:" "" fpath )) ; remove Windows driver letter in path
+         (backupFilePath (replace-regexp-in-string "//" "/" (concat backupRootDir filePath "~") )))
+    (make-directory (file-name-directory backupFilePath) (file-name-directory backupFilePath))
+    backupFilePath))
+(setq make-backup-file-name-function 'backup-file-name)
+
+
 
 ;; --------------------
 ;; INITIALISATION (package.el/use-package)
@@ -26,11 +78,11 @@
 
 (package-initialize)
 (unless package-archive-contents
- (package-refresh-contents))
+  (package-refresh-contents))
 
 ;; Initialize use-package on non-Linux platforms
 (unless (package-installed-p 'use-package)
-   (package-install 'use-package))
+  (package-install 'use-package))
 
 (require 'use-package)
 (setq use-package-always-ensure t)
@@ -40,15 +92,39 @@
 ;; --------------------
 (use-package emacs
   :hook
-  ((after-init . recentf-mode))
+  (after-init . recentf-mode)
+  (prog-mode . electric-pair-mode)
+
   :config
-  (electric-pair-mode)
   (pixel-scroll-precision-mode)
   (global-auto-revert-mode 1)
   (setq auto-revert-verbose nil)
   (setq scroll-conservatively 101)
-  (setq scroll-margin 1)
+  ;; (setq scroll-margin 0)
+  ;; (setq major-mode-remap-alist
+  ;;       '((python-mode . python-ts-mode))
+  ;;       )
+  ;; (keymap-set minibuffer-mode-map "TAB" 'minibuffer-complete)
+  
+  ;; Revert Dired and other buffers
+  (customize-set-variable 'global-auto-revert-non-file-buffers t)
+  ;;(delete-selection-mode)
 
+  ;; Use spaces instead of tabs
+  (setq-default indent-tabs-mode nil)
+  (setq sentence-end-double-space nil)
+
+  ;; Use y/n instead of yes/no
+  (if (boundp 'use-short-answers)
+      (setq use-short-answers t)
+    (advice-add 'yes-or-no-p :override #'y-or-n-p))
+
+  ;; Do not save duplicates in kill-ring
+  (customize-set-variable 'kill-do-not-save-duplicates t)
+
+  ;; Make shebang (#!) file executable when saved
+  (add-hook 'after-save-hook #'executable-make-buffer-file-executable-if-script-p)
+  
   :bind (
 	 ("s-x" . execute-extended-command)
 	 ("M-o" . other-window)
@@ -57,6 +133,8 @@
 	 ("C-c k" . kill-buffer-and-window)
 	 ("C-x k" . kill-this-buffer)
          ("C-c f r" . recentf)
+         ("C-c d" . duplicate-dwim)
+         ("C-s-SPC" . mark-sexp)
          ("s-i" . up-list)
          ("M-[" . (lambda () (interactive) (scroll-down-line 3)))
          ("M-]" . (lambda () (interactive) (scroll-up-line 3)))
@@ -65,8 +143,10 @@
 	 ([magnify-up] . nil)
 	 ([magnify-down] . nil)
 	 ([pinch] . nil)
+         ("C-<wheel-down>" . nil)
+         ("C-<wheel-up>" . nil)
 	 )
-    )
+  )
 
 ;; (setq auto-window-vscroll nil)
 ;; (customize-set-variable 'fast-but-imprecise-scrolling t)
@@ -84,6 +164,12 @@
 ;; ------------------------
 ;; PACKAGE CONFIGURATION
 ;; ------------------------
+(use-package exec-path-from-shell
+  :init
+  (when (memq window-system '(mac ns x))
+    (exec-path-from-shell-initialize))
+  )
+
 (use-package corfu
   :bind
   ("C-<tab>" . completion-at-point)
@@ -94,14 +180,37 @@
   (global-corfu-mode)
   )
 
+(use-package which-key
+  :config
+  (which-key-mode))
+
 (use-package visual-fill-column
   )
 
-(use-package exec-path-from-shell
+(use-package popper
+  :bind (("M-`"   . popper-toggle)
+         ("C-`"   . popper-cycle)
+         ("C-M-`" . popper-toggle-type))
   :init
-  (when (memq window-system '(mac ns x))
-    (exec-path-from-shell-initialize))
+  (setq popper-reference-buffers
+        '("\\*Messages\\*"
+          "Output\\*$"
+          "\\*Async Shell Command\\*"
+          "\\*eldoc .+\\*"
+          "\\*eldoc\\*"
+          "\\*TeX Help\\*"
+          help-mode
+          compilation-mode))
+  (popper-mode 1)
+  ;; (popper-echo-mode -1)
   )
+
+;; (use-package solaire-mode
+;;   :init
+;;   (solaire-global-mode +1)
+;;   )
+
+
 
 (use-package adaptive-wrap)
 
@@ -129,7 +238,7 @@
   ;; available in the *Completions* buffer, add it to the
   ;; `completion-list-mode-map'.
   :bind (:map minibuffer-local-map
-         ("M-A" . marginalia-cycle))
+              ("M-A" . marginalia-cycle))
 
   ;; The :init section is always executed.
   :init
@@ -143,13 +252,14 @@
   :bind (
          ("C-x b" . consult-buffer)
          ("s-m" . consult-imenu))
-)
+  )
+
 (use-package eglot)
 
 (use-package tex
   :ensure auctex
 
-  :bind (
+  :bind (:map TeX-mode-map
          ("M-=" . (lambda () (interactive) (save-buffer) (TeX-command "LaTeX" 'TeX-master-file)))
          )
 
@@ -164,6 +274,7 @@
 
   :config
   (setq TeX-source-correlate-method 'synctex)
+  (setq TeX-source-correlate-mode t)
   (setq TeX-source-correlate-start-server t)
   (setq TeX-PDF-mode t)
   (setq TeX-save-query nil)
@@ -174,9 +285,9 @@
   (setq reftex-plug-into-AUCTeX t)
   (setq TeX-newline-function 'reindent-then-newline-and-indent)
   (setq TeX-view-program-selection
-         '((output-dvi "open")
-           (output-pdf "Skim")
-           (output-html "open")))
+        '((output-dvi "open")
+          (output-pdf "Skim")
+          (output-html "open")))
   (setq TeX-view-program-list
         '(("Skim"
            "/Applications/Skim.app/Contents/SharedSupport/displayline -g %n %o %b")))
@@ -184,6 +295,7 @@
         "~/Documents/library/references/references.bib"
         font-latex-fontify-script nil
         font-latex-fontify-sectioning 1.0)
+  (setq blink-matching-paren nil)
   )
 
 (use-package auctex-latexmk
@@ -209,7 +321,11 @@
   (LaTeX-mode . citar-capf-setup)
   (org-mode . citar-capf-setup)
   :config
-  (push '("pdf" . citar-file-open-external) citar-file-open-functions))
+  (push '("pdf" . citar-file-open-external) citar-file-open-functions)
+  (setq org-cite-insert-processor 'citar
+        org-cite-follow-processor 'citar
+        org-cite-activate-processor 'citar)
+  )
 
 ;;(use-package pdf-tools)
 
@@ -217,7 +333,9 @@
   :bind (
 	 ("s-;" . avy-goto-char-timer)
 	 ("s-l" . avy-goto-line)
-	 ("C-;" . avy-goto-char-timer))
+	 ("C-;" . avy-goto-char-2))
+  :custom
+  (setq avy-indent-line-overlay nil)
   )
 
 (use-package deft
@@ -245,42 +363,73 @@
   (setq highlight-indent-guides-method 'character)
   )
 
+(use-package markdown-mode)
 
 (use-package treemacs
   :bind
-  (("C-c t" . treemacs))
+  (("C-c t" . treemacs)
+   ("M-0" . treemacs-select-window))
   :config
-  (setq treemcs-indentation 1)
-  (setq treemacs-width 25) ; Adjust the width of Treemacs window
-  (setq treemacs-show-hidden-files nil) ; Hide hidden files in Treemacs
-
-  ;; (add-hook 'treemacs-mode-hook
-  ;;           (lambda ()
-  ;;             (text-scale-set -1))) ; Adjust the font size as desired
-
-  (setq treemacs-no-load-time-warnings t)
   (setq treemacs-no-png-images t)
+  (setq treemacs-indentation 2)
+  (setq treemacs-width 30) ; Adjust the width of Treemacs window
+  (setq treemacs-text-scale -1)
+  (setq treemacs-show-hidden-files nil) ; Hide hidden files in Treemacs
+  (setq treemacs-no-load-time-warnings t)
+  (treemacs-fringe-indicator-mode 'only-when-focused)
   )
 
 
 (use-package expand-region
   :bind
-  (("C-s-SPC" . er/expand-region)
-   ("C-=" . er/expand-region)))
+  (
+   ("C-=" . er/expand-region)
+   ;;("C-s-SPC" . er/expand-region)
+   ;; ("s-," . er/mark-LaTeX-math)
+   ;; ("s-." . er/mark-LaTeX-inside-environment)
+   ))
+  
 
 (use-package nerd-icons)
 
 (use-package doom-modeline
   :ensure t
-  :init (doom-modeline-mode 1))
+  :init
+  (doom-modeline-mode 1)
+  :config
+  (setq mode-line-right-align-edge 'right-fringe)
+  )
 
 (use-package magit)
 
+;;(package-vc-install '(combobulate :url "https://github.com/mickeynp/combobulate"))
+;; (use-package combobulate
+;;   :preface
+;;   (setq combobulate-key-prefix "C-c o")
+
+;;   ;; :hook ((python-ts-mode . combobulate-mode)
+;;   ;;        (js-ts-mode . combobulate-mode)
+;;   ;;        (css-ts-mode . combobulate-mode)
+;;   ;;        (yaml-ts-mode . combobulate-mode)
+;;   ;;        (json-ts-mode . combobulate-mode)
+;;   ;;        (typescript-ts-mode . combobulate-mode)
+;;   ;;        (tsx-ts-mode . combobulate-mode))
+;;   ;; ;; Amend this to the directory where you keep Combobulate's source
+;;   ;; ;; code.
+;;   ;; :load-path ("path-to-git-checkout-of-combobulate"))
+;;   )
+
+(use-package impatient-mode)
+
+;; Org
+;; ---
 
 (use-package org
   :bind
   (:map org-mode-map
-	("$" . pw/insert-math-parentheses))  
+	("$" . pw/insert-math-parentheses))
+  :hook
+  (org-mode . visual-line-mode)
   :config
   (setq org-startup-indented t
         org-startup-folded t
@@ -289,6 +438,8 @@
         org-highlight-latex-and-related '(latex)
         org-latex-create-formula-image-program 'dvisvgm
         )
+  (setq calendar-week-start-day 1)
+  (setq org-cite-global-bibliography '("~/Documents/library/references/references.bib"))
   ;; (plist-put org-format-latex-options :foreground 'default)
   ;;(plist-put org-format-latex-options :background "Transparent")
   ;;(setq org-format-latex-options (plist-put org-format-latex-options :scale 0.7))
@@ -304,91 +455,104 @@
                                                        (:kernel . "python3")))
   )
 
+
+
+;; Python
+;; ------
+
+;; To conisder: py-isort, pyimport, python-pytest
+
 (use-package python-mode
+  :hook
+  (python-base-mode . eglot-ensure)
+  (python-base-mode . eldoc-mode)
   :bind
   (:map python-mode-map
-        ("C-c C-n" . numpydoc-generate)
         ("C-c e n" . flymake-goto-next-error)
         ("C-c e p" . flymake-goto-prev-error)
         )
+  :init
+  (setq python-indent-guess-indent-offset-verbose nil)
+
+  :config
+  (er/enable-mode-expansions 'python-ts-mode 'er/add-python-mode-expansions)
   )
 
-(use-package pyvenv
-  :bind
-  (:map pyvenv-mode-map
-        ("C-c p a" . pyvenv-activate)
-        ("C-c p d" . pyvenv-deactivate)
-        ("C-c p w" . pyvenv-workon)
-        )
+(use-package eldoc-mode
+  :config
+  (setq eldoc-echo-area-use-multiline-p nil))
+
+(use-package pet
+  :config
+  (add-hook 'python-base-mode-hook 'pet-mode -10))
+
+(use-package jupyter
+  :config
+  (setq jupyter-repl-echo-eval-p t)
   )
 
-;; (when (featurep 'anaconda-mode)
-;;   (add-hook 'python-mode-hook #'anaconda-mode))
-(use-package anaconda-mode)
+(use-package code-cells
+  :hook
+  (python-mode . code-cells-mode-maybe))
 
-(when (featurep 'blacken)
-  (add-hook 'python-mode-hook #'blacken-mode))
+(use-package python-black
+  :after python
+  :hook (python-mode . python-black-on-save-mode-enable-dwim)
+  )
 
-(add-hook 'python-mode-hook #'eldoc-mode)
+;; (use-package numpydoc
+;;   :bind
+;;   (:map python-mode-map
+;;         ("C-c C-n" . numpydoc-generate)
+;;         )
 
-(when (featurep 'eglot)
-  (add-hook 'python-mode-hook #'eglot-ensure))
+;;   :init
+;;   (setq numpydoc-insert-examples-block nil)
+;;   (setq numpydoc-template-long nil)
+;;   )
 
-(when (featurep 'pyvenv)
-  (add-hook 'python-mode-hook #'pyvenv-mode)
-  (add-hook 'python-mode-hook #'pyvenv-tracking-mode))
+;; (use-package python-pytest)
+;; (use-package python-isort)
 
-(when (featurep 'pyvenv)
-  ;; restart python when the virtual environment changes
-  (add-hook 'pyvenv-post-activate-hooks #'pyvenv-restart-python)
+;; (use-package pyvenv
+;;   :bind
+;;   (:map pyvenv-mode-map
+;;         ("C-c p a" . pyvenv-activate)
+;;         ("C-c p d" . pyvenv-deactivate)
+;;         ("C-c p w" . pyvenv-workon)
+;;         )
 
-  ;; default to the commonly used "venv" folder for the virtual
-  ;; environment
-  (customize-set-variable 'pyvenv-default-virtual-env-name "venv"))
+;;   :hook
+;;   (python-mode . pyvenv-mode)
+;;   (python-mode . pyvenv-tracking-mode)
 
-(customize-set-variable 'python-indent-guess-indent-offset-verbose nil)
+;;   :init
+;;   (add-hook 'pyvenv-post-activate-hooks #'pyvenv-restart-python)
+;;   (setq pyvenv-default-virtual-env-name "venv")
+;;   )
 
-(when (featurep 'numpydoc)
-  (customize-set-variable 'numpydoc-insert-examples-block nil)
-  (customize-set-variable 'numpydoc-template-long nil))
+;; (use-package anaconda-mode
+;;   :hook
+;;   (python-mode . anaconda-mode))
 
-(use-package blacken)
-(use-package numpydoc)
+;; (use-package python-docstring
+;;   :delight
+;;   :hook (python-base-mode . python-docstring-mode))
+
+;; (use-package python-insert-docstring
+;;   :config
+;;   (add-hook 'python-base-mode-hook
+;;             (lambda ()
+;;               (local-set-key
+;;                (kbd "C-c I")
+;;                'python-insert-docstring-with-google-style-at-point))))
+
+;; (use-package sphinx-doc
+;;   :delight
+;;   :hook (python-base-mode . sphinx-doc-mode))
 
 
 
-(defun pw/notebook-full-size ()
-  (interactive)
-  (set-frame-parameter nil 'height 53)
-  (set-frame-parameter nil 'width 203))
-
-(defun pw/notebook-slim-size ()
-  (interactive)
-  (set-frame-parameter nil 'height 53)
-  (set-frame-parameter nil 'width 103))
-
-(defun pw/desktop-slim-size ()
-  (interactive)
-  (set-frame-parameter nil 'height 64)
-  (set-frame-parameter nil 'width 140))
-
-(defun pw/desktop-full-size ()
-  (interactive)
-  (set-frame-parameter nil 'height 64)
-  (set-frame-parameter nil 'width 271))
-
-(defun pw/move-frame-top-left ()
-  (interactive)
-  (set-frame-position (selected-frame) 0 0))
-
-(defun pw/insert-math-parentheses () (interactive)
-       (insert "\\(  \\)")
-       (backward-char 3))
-
-(add-hook 'window-setup-hook
-          'pw/notebook-slim-size 'append)
-(add-hook 'window-setup-hook
-          'pw/move-frame-top-left 'append)
 
 
 
@@ -396,39 +560,6 @@
 
 ;;; Code:
 
-;; Revert Dired and other buffers
-(customize-set-variable 'global-auto-revert-non-file-buffers t)
-
-
-;; Typed text replaces the selection if the selection is active,
-;; pressing delete or backspace deletes the selection.
-;;(delete-selection-mode)
-
-;; Use spaces instead of tabs
-(setq-default indent-tabs-mode nil)
-
-;; Use y/n instead of yes/no
-(if (boundp 'use-short-answers)
-    (setq use-short-answers t)
-  (advice-add 'yes-or-no-p :override #'y-or-n-p))
-
-
-;; Do not save duplicates in kill-ring
-(customize-set-variable 'kill-do-not-save-duplicates t)
-
-;; Make shebang (#!) file executable when saved
-(add-hook 'after-save-hook #'executable-make-buffer-file-executable-if-script-p)
-
-
-;; Make scrolling less stuttered
-;; (setq auto-window-vscroll nil)
-;; (customize-set-variable 'fast-but-imprecise-scrolling t)
-;; (customize-set-variable 'scroll-preserve-screen-position t)
-
-;; Better support for files with long lines
-;; (setq-default bidi-paragraph-direction 'left-to-right)
-;; (setq-default bidi-inhibit-bpa t)
-;; (global-so-long-mode 1)
 
 
 ;; -----------------------------
@@ -452,7 +583,9 @@
  '(ns-right-alternate-modifier nil)
  '(ns-right-command-modifier 'meta)
  '(package-selected-packages
-   '(python-mode pyvenv numpydoc blacken anaconda anaconda-mode exec-path-from-shell pdf-tools auctex-latexmk consult adaptive-wrap visual-fill-column visual-fill-column-mode marginalia orderless magit nerd-icon expand-region iy-go-to-char treemacs highlight-indent-guides deft iv-go-to-char avy eglot vertico corfu use-package)))
+   '(impatient-mode markdown-mode popper code-cells combobulate jupyter which-key-mode which-key python-mode pyvenv numpydoc anaconda anaconda-mode exec-path-from-shell pdf-tools auctex-latexmk consult adaptive-wrap visual-fill-column visual-fill-column-mode marginalia orderless magit nerd-icon expand-region iy-go-to-char treemacs highlight-indent-guides deft iv-go-to-char avy eglot vertico corfu use-package))
+ '(package-vc-selected-packages
+   '((combobulate :url "https://github.com/mickeynp/combobulate"))))
 
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
