@@ -2,8 +2,8 @@
 
 (load-theme 'modus-vivendi)
 (set-face-attribute 'fringe nil :background nil)
-(add-hook 'modus-themes-after-load-theme-hook
-          (lambda () (set-face-attribute 'fringe nil :background nil)))
+;; (add-hook 'modus-themes-after-load-theme-hook
+;;           (lambda () (set-face-attribute 'fringe nil :background nil)))
 
 (set-face-attribute 'default nil :font "JetBrains Mono" :height 120)
 (set-frame-parameter nil 'height 52)
@@ -70,21 +70,22 @@ If the new path's directories does not exist, create them."
 ;; --------------------
 ;; INITIALISATION (package.el/use-package)
 ;; --------------------
-(require 'package)
+;; (require 'package)
 
-(setq package-archives '(("melpa" . "https://melpa.org/packages/")
-                         ("org" . "https://orgmode.org/elpa/")
-                         ("elpa" . "https://elpa.gnu.org/packages/")))
+;; (setq package-archives '(("melpa" . "https://melpa.org/packages/")
+;;                          ("org" . "https://orgmode.org/elpa/")
+;;                          ("elpa" . "https://elpa.gnu.org/packages/")))
+(add-to-list 'package-archives '("nongnu" . "https://elpa.nongnu.org/nongnu/"))
+(add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/"))
 
-(package-initialize)
-(unless package-archive-contents
-  (package-refresh-contents))
-
+;; (package-initialize)
+;; (unless package-archive-contents
+;;   (package-refresh-contents))
 ;; Initialize use-package on non-Linux platforms
-(unless (package-installed-p 'use-package)
-  (package-install 'use-package))
+;; (unless (package-installed-p 'use-package)
+;;   (package-install 'use-package))
+;; (require 'use-package)
 
-(require 'use-package)
 (setq use-package-always-ensure t)
 
 ;; --------------------
@@ -100,6 +101,8 @@ If the new path's directories does not exist, create them."
   (global-auto-revert-mode 1)
   (setq auto-revert-verbose nil)
   (setq scroll-conservatively 101)
+  (setq enable-recursive-minibuffers t)
+  
   ;; (setq scroll-margin 0)
   ;; (setq major-mode-remap-alist
   ;;       '((python-mode . python-ts-mode))
@@ -132,6 +135,7 @@ If the new path's directories does not exist, create them."
 	 ("s-<up>" . enlarge-window)
 	 ("C-c k" . kill-buffer-and-window)
 	 ("C-x k" . kill-this-buffer)
+         ("C-x C-b" . ibuffer)
          ("C-c f r" . recentf)
          ("C-c d" . duplicate-dwim)
          ("C-s-SPC" . mark-sexp)
@@ -210,6 +214,9 @@ If the new path's directories does not exist, create them."
 ;;   (solaire-global-mode +1)
 ;;   )
 
+(use-package git-gutter-fringe
+  :init
+  (global-git-gutter-mode))
 
 
 (use-package adaptive-wrap)
@@ -248,6 +255,43 @@ If the new path's directories does not exist, create them."
   ;; package.
   (marginalia-mode))
 
+(use-package embark
+  :ensure t
+
+  :bind
+  (("C-." . embark-act)         ;; pick some comfortable binding
+   ("s-." . embark-dwim)        ;; good alternative: M-.
+   ("C-h B" . embark-bindings)) ;; alternative for `describe-bindings'
+
+  :init
+
+  ;; Optionally replace the key help with a completing-read interface
+  (setq prefix-help-command #'embark-prefix-help-command)
+
+  ;; Show the Embark target at point via Eldoc. You may adjust the
+  ;; Eldoc strategy, if you want to see the documentation from
+  ;; multiple providers. Beware that using this can be a little
+  ;; jarring since the message shown in the minibuffer can be more
+  ;; than one line, causing the modeline to move up and down:
+
+  ;; (add-hook 'eldoc-documentation-functions #'embark-eldoc-first-target)
+  ;; (setq eldoc-documentation-strategy #'eldoc-documentation-compose-eagerly)
+
+  :config
+
+  ;; Hide the mode line of the Embark live/completions buffers
+  (add-to-list 'display-buffer-alist
+               '("\\`\\*Embark Collect \\(Live\\|Completions\\)\\*"
+                 nil
+                 (window-parameters (mode-line-format . none))))
+  )
+
+;; Consult users will also want the embark-consult package.
+(use-package embark-consult
+  :ensure t ; only need to install it, embark loads it after consult if found
+  :hook
+  (embark-collect-mode . consult-preview-at-point-mode))
+
 (use-package consult
   :bind (
          ("C-x b" . consult-buffer)
@@ -281,7 +325,7 @@ If the new path's directories does not exist, create them."
   (setq TeX-electric-sub-and-superscript t)
   (setq LaTeX-electric-left-right-brace t)
   (setq TeX-electric-math (cons "$" "$"))
-  (setq TeX-parse-self t)
+  ;;(setq TeX-parse-self t)
   (setq reftex-plug-into-AUCTeX t)
   (setq TeX-newline-function 'reindent-then-newline-and-indent)
   (setq TeX-view-program-selection
@@ -325,8 +369,14 @@ If the new path's directories does not exist, create them."
   (setq org-cite-insert-processor 'citar
         org-cite-follow-processor 'citar
         org-cite-activate-processor 'citar)
+  (setq citar-open-resources '(:files))
   )
 
+
+(use-package citar-embark
+  :after citar embark
+  :no-require
+  :config (citar-embark-mode))
 ;;(use-package pdf-tools)
 
 (use-package avy
@@ -400,7 +450,10 @@ If the new path's directories does not exist, create them."
   (setq mode-line-right-align-edge 'right-fringe)
   )
 
-(use-package magit)
+(use-package magit
+  :config
+  (setq ediff-window-setup-function 'ediff-setup-windows-plain)
+  )
 
 ;;(package-vc-install '(combobulate :url "https://github.com/mickeynp/combobulate"))
 ;; (use-package combobulate
@@ -462,6 +515,10 @@ If the new path's directories does not exist, create them."
 
 ;; To conisder: py-isort, pyimport, python-pytest
 
+(use-package eldoc
+  :config
+  (setq eldoc-echo-area-use-multiline-p nil))
+
 (use-package python-mode
   :hook
   (python-base-mode . eglot-ensure)
@@ -477,10 +534,6 @@ If the new path's directories does not exist, create them."
   :config
   (er/enable-mode-expansions 'python-ts-mode 'er/add-python-mode-expansions)
   )
-
-(use-package eldoc-mode
-  :config
-  (setq eldoc-echo-area-use-multiline-p nil))
 
 (use-package pet
   :config
@@ -583,9 +636,8 @@ If the new path's directories does not exist, create them."
  '(ns-right-alternate-modifier nil)
  '(ns-right-command-modifier 'meta)
  '(package-selected-packages
-   '(impatient-mode markdown-mode popper code-cells combobulate jupyter which-key-mode which-key python-mode pyvenv numpydoc anaconda anaconda-mode exec-path-from-shell pdf-tools auctex-latexmk consult adaptive-wrap visual-fill-column visual-fill-column-mode marginalia orderless magit nerd-icon expand-region iy-go-to-char treemacs highlight-indent-guides deft iv-go-to-char avy eglot vertico corfu use-package))
- '(package-vc-selected-packages
-   '((combobulate :url "https://github.com/mickeynp/combobulate"))))
+   '(citar-embark eldoc-mode embark git-gutter-fringe impatient-mode markdown-mode popper code-cells jupyter which-key-mode which-key python-mode pyvenv numpydoc anaconda anaconda-mode exec-path-from-shell pdf-tools auctex-latexmk consult adaptive-wrap visual-fill-column visual-fill-column-mode marginalia orderless magit nerd-icon expand-region iy-go-to-char treemacs highlight-indent-guides deft iv-go-to-char avy eglot vertico corfu use-package))
+ '(package-vc-selected-packages nil))
 
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
