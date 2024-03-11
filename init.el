@@ -66,7 +66,6 @@ If the new path's directories does not exist, create them."
 (setq make-backup-file-name-function 'backup-file-name)
 
 
-
 ;; --------------------
 ;; INITIALISATION (package.el/use-package)
 ;; --------------------
@@ -477,7 +476,11 @@ If the new path's directories does not exist, create them."
 ;; Org
 ;; ---
 
+;; Install org with better latex-preview
+;; (package-vc-install '(org-mode :url "https://code.tecosaur.net/tec/org-mode"))
+
 (use-package org
+  :load-path "~/vanilla-emacs/elpa/org-mode/lisp/"
   :bind
   (:map org-mode-map
 	("$" . pw/insert-math-parentheses))
@@ -488,8 +491,8 @@ If the new path's directories does not exist, create them."
         org-startup-folded t
         org-hide-leading-stars nil
         org-hide-emphasis-markers t
-        org-highlight-latex-and-related '(latex)
-        org-latex-create-formula-image-program 'dvisvgm
+        ;; org-highlight-latex-and-related '(latex)
+        ;; org-latex-create-formula-image-program 'dvisvgm
         )
   (setq calendar-week-start-day 1)
   (setq org-cite-global-bibliography '("~/Documents/library/references/references.bib"))
@@ -506,6 +509,35 @@ If the new path's directories does not exist, create them."
   (setq org-babel-default-header-args:jupyter-python '((:async . "yes")
                                                        (:session . "py")
                                                        (:kernel . "python3")))
+
+
+  ;; ORG-LATEX-PREVIEW
+  ;; Increase preview width
+  (plist-put org-latex-preview-appearance-options
+             :page-width 0.8)
+
+  ;; Use dvisvgm to generate previews
+  ;; You don't need this, it's the default:
+  (setq org-latex-preview-process-default 'dvisvgm)
+  
+  ;; Turn on auto-mode, it's built into Org and much faster/more featured than
+  ;; org-fragtog. (Remember to turn off/uninstall org-fragtog.)
+  (add-hook 'org-mode-hook 'org-latex-preview-auto-mode)
+
+  ;; Block C-n and C-p from opening up previews when using auto-mode
+  (add-hook 'org-latex-preview-auto-ignored-commands 'next-line)
+  (add-hook 'org-latex-preview-auto-ignored-commands 'previous-line)
+
+  ;; Enable consistent equation numbering
+  (setq org-latex-preview-numbered t)
+
+  ;; Bonus: Turn on live previews.  This shows you a live preview of a LaTeX
+  ;; fragment and updates the preview in real-time as you edit it.
+  ;; To preview only environments, set it to '(block edit-special) instead
+  (setq org-latex-preview-live t)
+
+  ;; More immediate live-previews -- the default delay is 1 second
+  (setq org-latex-preview-live-debounce 0.25)
   )
 
 
@@ -636,8 +668,10 @@ If the new path's directories does not exist, create them."
  '(ns-right-alternate-modifier nil)
  '(ns-right-command-modifier 'meta)
  '(package-selected-packages
-   '(citar-embark eldoc-mode embark git-gutter-fringe impatient-mode markdown-mode popper code-cells jupyter which-key-mode which-key python-mode pyvenv numpydoc anaconda anaconda-mode exec-path-from-shell pdf-tools auctex-latexmk consult adaptive-wrap visual-fill-column visual-fill-column-mode marginalia orderless magit nerd-icon expand-region iy-go-to-char treemacs highlight-indent-guides deft iv-go-to-char avy eglot vertico corfu use-package))
- '(package-vc-selected-packages nil))
+   '(org-mode org org-latex-preview citar-embark eldoc-mode embark git-gutter-fringe impatient-mode markdown-mode popper code-cells jupyter which-key-mode which-key python-mode pyvenv numpydoc anaconda anaconda-mode exec-path-from-shell pdf-tools auctex-latexmk consult adaptive-wrap visual-fill-column visual-fill-column-mode marginalia orderless magit nerd-icon expand-region iy-go-to-char treemacs highlight-indent-guides deft iv-go-to-char avy eglot vertico corfu use-package))
+ '(package-vc-selected-packages
+   '((org-mode :url "https://code.tecosaur.net/tec/org-mode")
+     (org :url "https://code.tecosaur.net/tec/org-mode"))))
 
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
