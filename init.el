@@ -1,14 +1,15 @@
 ;; Simple Emacs Config
 
+(setq default-frame-alist '(
+                            ;; (left . 0)
+                            (width . 103)
+                            (fullscreen . fullheight)))
+(set-face-attribute 'default nil :font "JetBrains Mono" :height 120)
 (load-theme 'modus-vivendi)
 (set-face-attribute 'fringe nil :background nil)
 ;; (add-hook 'modus-themes-after-load-theme-hook
 ;;           (lambda () (set-face-attribute 'fringe nil :background nil)))
 
-(set-face-attribute 'default nil :font "JetBrains Mono" :height 120)
-(set-frame-parameter nil 'height 52)
-(set-frame-parameter nil 'width 103)
-(set-frame-position (selected-frame) 0 0)
 
 (setq inhibit-startup-message t)
 (scroll-bar-mode -1)
@@ -19,27 +20,17 @@
 ;; Window Setup
 ;; ------------
 
-(defun pw/notebook-full-size ()
+(defun pw/slim-width ()
   (interactive)
-  ;; (set-frame-parameter nil 'height 53)
-  (toggle-frame-maximized)
-  (set-frame-parameter nil 'width 203))
-
-(defun pw/notebook-slim-size ()
-  (interactive)
-  ;; (set-frame-parameter nil 'height 53)
-  (toggle-frame-maximized)
   (set-frame-parameter nil 'width 103))
 
-(defun pw/desktop-slim-size ()
+(defun pw/mid-width ()
   (interactive)
-  (toggle-frame-maximized)
   (set-frame-parameter nil 'width 140))
 
-(defun pw/desktop-full-size ()
+(defun pw/full-height ()
   (interactive)
-  (toggle-frame-maximized)
-  (set-frame-parameter nil 'width 271))
+  (set-frame-parameter nil 'fullscreen 'fullheight))
 
 (defun pw/move-frame-top-left ()
   (interactive)
@@ -49,17 +40,20 @@
        (insert "\\(  \\)")
        (backward-char 3))
 
-(add-hook 'window-setup-hook
-          'pw/notebook-slim-size 'append)
-(add-hook 'window-setup-hook
-          'pw/move-frame-top-left 'append)
+
+;; (add-hook 'window-setup-hook
+;;           'toggle-frame-maximized 'append)
+;; (add-hook 'window-setup-hook
+;;           'pw/move-frame-top-left 'append)
+;; (add-hook 'window-setup-hook
+;;           'pw/slim-width 'append)
 
 
 (defun backup-file-name (fpath)
   "Return a new file path of a given file path.
 If the new path's directories does not exist, create them."
   (let* ((backupRootDir "~/.emacs.d/emacs-backup/")
-         (filePath (replace-regexp-in-string "[A-Za-z]:" "" fpath )) ; remove Windows driver letter in path
+         (filePath (replace-regexp-in-string "[A-Za-z]:" "" fpath )) ; remove Windows letter
          (backupFilePath (replace-regexp-in-string "//" "/" (concat backupRootDir filePath "~") )))
     (make-directory (file-name-directory backupFilePath) (file-name-directory backupFilePath))
     backupFilePath))
@@ -69,15 +63,18 @@ If the new path's directories does not exist, create them."
 ;; --------------------
 ;; INITIALISATION (package.el/use-package)
 ;; --------------------
-;; (require 'package)
+(require 'package)
 
 ;; (setq package-archives '(("melpa" . "https://melpa.org/packages/")
 ;;                          ("org" . "https://orgmode.org/elpa/")
 ;;                          ("elpa" . "https://elpa.gnu.org/packages/")))
 (add-to-list 'package-archives '("nongnu" . "https://elpa.nongnu.org/nongnu/"))
 (add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/"))
+(add-to-list 'package-archives '("org" . "http://orgmode.org/elpa/"))
 
-;; (package-initialize)
+(package-initialize)
+(require 'use-package)
+
 ;; (unless package-archive-contents
 ;;   (package-refresh-contents))
 ;; Initialize use-package on non-Linux platforms
@@ -86,6 +83,9 @@ If the new path's directories does not exist, create them."
 ;; (require 'use-package)
 
 (setq use-package-always-ensure t)
+
+;; Install org with better latex-preview
+;;(package-vcc-install '(org-mode :url "https://code.tecosaur.net/tec/org-mode"))
 
 ;; --------------------
 ;; GENERAL
@@ -116,6 +116,8 @@ If the new path's directories does not exist, create them."
   (setq-default indent-tabs-mode nil)
   (setq sentence-end-double-space nil)
 
+  (setq delete-pair-blink-delay 0.2)
+
   ;; Use y/n instead of yes/no
   (if (boundp 'use-short-answers)
       (setq use-short-answers t)
@@ -139,6 +141,12 @@ If the new path's directories does not exist, create them."
          ("C-c d" . duplicate-dwim)
          ("C-s-SPC" . mark-sexp)
          ("s-i" . up-list)
+         ("s-d" . delete-pair)
+         ;;("s-i" . sp-up-sexp)
+         ("s-j" . jump-to-register)
+         ("s-r" . point-to-register)
+         ("s-p" . point-to-register)
+         ("s-u" . consult-register)
          ("M-[" . (lambda () (interactive) (scroll-down-line 3)))
          ("M-]" . (lambda () (interactive) (scroll-up-line 3)))
 	 ([swipe-left] . nil)
@@ -173,11 +181,88 @@ If the new path's directories does not exist, create them."
     (exec-path-from-shell-initialize))
   )
 
+;; ORG MODE
+;; --------
+(use-package org
+  ;;:load-path "~/.emacs.d/elpa/org-mode/lisp/" 
+  :bind
+  (:map org-mode-map
+	("$" . pw/insert-math-parentheses))
+  :hook
+  (org-mode . visual-line-mode)
+  (org-mode . visual-fill-column-mode)
+  :config
+  (setq org-startup-indented t
+        org-startup-folded t
+        org-hide-leading-stars nil
+        org-hide-emphasis-markers t
+        org-highlight-latex-and-related '(latex)
+        ;;org-latex-create-formula-image-program 'dvisvgm
+        )
+  (setq calendar-week-start-day 1)
+  (setq org-cite-global-bibliography '("~/Documents/library/references/references.bib"))
+  ;; (plist-put org-format-latex-options :foreground 'default)
+  ;;(plist-put org-format-latex-options :background "Transparent")
+  ;;(setq org-format-latex-options (plist-put org-format-latex-options :scale 0.7))
+  (remove-hook 'org-cycle-hook
+               #'org-optimize-window-after-visibility-change)
+  (remove-hook 'org-cycle-hook
+               #'org-cycle-optimize-window-after-visibility-change)
+  ;;(require 'ox-ipynb)
+  ;;(set-company-backend! 'org-mode nil)
+  (setq org-clock-mode-line-total 'current)
+  (setq org-babel-default-header-args:jupyter-python '((:async . "yes")
+                                                       (:session . "py")
+                                                       (:kernel . "python3")))
+  (add-hook 'org-clock-in-hook
+            (lambda ()
+              (call-process "/usr/bin/osascript" nil 0 nil "-e"
+                            (concat "tell application \"org-clock-statusbar\" to clock in \""
+                                    (replace-regexp-in-string "\"" "\\\\\""
+                                                              org-clock-current-task) "\""))))
+  (add-hook 'org-clock-out-hook
+            (lambda ()
+              (call-process "/usr/bin/osascript" nil 0 nil
+                            "-e" "tell application \"org-clock-statusbar\" to clock out")))
+
+
+  ;; ;; ;; ORG-LATEX-PREVIEW
+  ;; ;; ;; Increase preview width
+  ;; (plist-put org-latex-preview-appearance-options
+  ;;            :page-width 0.8)
+
+  ;; ;; Use dvisvgm to generate previews
+  ;; ;; You don't need this, it's the default:
+  ;; (setq org-latex-preview-process-default 'dvisvgm)
+  
+  ;; ;; Turn on auto-mode, it's built into Org and much faster/more featured than
+  ;; ;; org-fragtog. (Remember to turn off/uninstall org-fragtog.)
+  ;; (add-hook 'org-mode-hook 'org-latex-preview-auto-mode)
+
+  ;; ;; Block C-n and C-p from opening up previews when using auto-mode
+  ;; (add-hook 'org-latex-preview-auto-ignored-commands 'next-line)
+  ;; (add-hook 'org-latex-preview-auto-ignored-commands 'previous-line)
+
+  ;; ;; Enable consistent equation numbering
+  ;; (setq org-latex-preview-numbered t)
+
+  ;; ;; Bonus: Turn on live previews.  This shows you a live preview of a LaTeX
+  ;; ;; fragment and updates the preview in real-time as you edit it.
+  ;; ;; To preview only environments, set it to '(block edit-special) instead
+  ;; (setq org-latex-preview-live t)
+
+  ;; ;; More immediate live-previews -- the default delay is 1 second
+  ;; (setq org-latex-preview-live-debounce 0.25)
+  
+  )
+
+(use-package org-pomodoro)
+
 (use-package corfu
   :bind
   ("C-<tab>" . completion-at-point)
   :config
-  (setq completion-cycle-threshold 3)
+  (setq completion-cycle-threshold 1)
   (setq tab-always-indent 'complete)
   :init
   (global-corfu-mode)
@@ -396,8 +481,7 @@ If the new path's directories does not exist, create them."
         ;; de-couples filename and note title:
         deft-use-filename-as-title nil
         deft-use-filter-string-for-filename t
-        ;; disable auto-save
-        deft-auto-save-interval -1.0
+        deft-auto-save-interval 5
         ;; converts the filter string into a readable file-name using kebab-case:
         deft-file-naming-rules
         '((noslash . "-")
@@ -437,7 +521,15 @@ If the new path's directories does not exist, create them."
    ;; ("s-," . er/mark-LaTeX-math)
    ;; ("s-." . er/mark-LaTeX-inside-environment)
    ))
-  
+
+(use-package surround
+  :bind-keymap ("C-c s" . surround-keymap))
+
+;; (use-package smartparens
+;;   :hook (prog-mode text-mode markdown-mode) ;; add `smartparens-mode` to these hooks
+;;   :config
+;;   ;; load default config
+;;   (require 'smartparens-config))
 
 (use-package nerd-icons)
 
@@ -472,73 +564,6 @@ If the new path's directories does not exist, create them."
 ;;   )
 
 (use-package impatient-mode)
-
-;; Org
-;; ---
-
-;; Install org with better latex-preview
-;; (package-vc-install '(org-mode :url "https://code.tecosaur.net/tec/org-mode"))
-
-(use-package org
-  :load-path "~/vanilla-emacs/elpa/org-mode/lisp/"
-  :bind
-  (:map org-mode-map
-	("$" . pw/insert-math-parentheses))
-  :hook
-  (org-mode . visual-line-mode)
-  :config
-  (setq org-startup-indented t
-        org-startup-folded t
-        org-hide-leading-stars nil
-        org-hide-emphasis-markers t
-        ;; org-highlight-latex-and-related '(latex)
-        ;; org-latex-create-formula-image-program 'dvisvgm
-        )
-  (setq calendar-week-start-day 1)
-  (setq org-cite-global-bibliography '("~/Documents/library/references/references.bib"))
-  ;; (plist-put org-format-latex-options :foreground 'default)
-  ;;(plist-put org-format-latex-options :background "Transparent")
-  ;;(setq org-format-latex-options (plist-put org-format-latex-options :scale 0.7))
-  (remove-hook 'org-cycle-hook
-               #'org-optimize-window-after-visibility-change)
-  (remove-hook 'org-cycle-hook
-               #'org-cycle-optimize-window-after-visibility-change)
-  ;;(require 'ox-ipynb)
-  ;;(set-company-backend! 'org-mode nil)
-  (setq org-clock-mode-line-total 'current)
-  (setq org-babel-default-header-args:jupyter-python '((:async . "yes")
-                                                       (:session . "py")
-                                                       (:kernel . "python3")))
-
-
-  ;; ORG-LATEX-PREVIEW
-  ;; Increase preview width
-  (plist-put org-latex-preview-appearance-options
-             :page-width 0.8)
-
-  ;; Use dvisvgm to generate previews
-  ;; You don't need this, it's the default:
-  (setq org-latex-preview-process-default 'dvisvgm)
-  
-  ;; Turn on auto-mode, it's built into Org and much faster/more featured than
-  ;; org-fragtog. (Remember to turn off/uninstall org-fragtog.)
-  (add-hook 'org-mode-hook 'org-latex-preview-auto-mode)
-
-  ;; Block C-n and C-p from opening up previews when using auto-mode
-  (add-hook 'org-latex-preview-auto-ignored-commands 'next-line)
-  (add-hook 'org-latex-preview-auto-ignored-commands 'previous-line)
-
-  ;; Enable consistent equation numbering
-  (setq org-latex-preview-numbered t)
-
-  ;; Bonus: Turn on live previews.  This shows you a live preview of a LaTeX
-  ;; fragment and updates the preview in real-time as you edit it.
-  ;; To preview only environments, set it to '(block edit-special) instead
-  (setq org-latex-preview-live t)
-
-  ;; More immediate live-previews -- the default delay is 1 second
-  (setq org-latex-preview-live-debounce 0.25)
-  )
 
 
 
@@ -578,7 +603,18 @@ If the new path's directories does not exist, create them."
 
 (use-package code-cells
   :hook
-  (python-mode . code-cells-mode-maybe))
+  (python-mode . code-cells-mode-maybe)
+  :bind
+  (:map python-mode-map
+        ("C-c C-e" . code-cells-eval)
+        ("M-=" . code-cells-eval)
+        ("M-<up>" . code-cells-backward-cell)
+        ("M-<down>" . code-cells-forward-cell)
+        ("M-+" . (lambda () (interactive)
+                   (call-interactively 'code-cells-eval)
+                   (call-interactively 'code-cells-forward-cell)))
+        )
+  )
 
 (use-package python-black
   :after python
@@ -638,15 +674,6 @@ If the new path's directories does not exist, create them."
 
 
 
-
-
-
-;; General sane defaults
-
-;;; Code:
-
-
-
 ;; -----------------------------
 ;; CUSTOM
 ;; -----------------------------
@@ -668,10 +695,7 @@ If the new path's directories does not exist, create them."
  '(ns-right-alternate-modifier nil)
  '(ns-right-command-modifier 'meta)
  '(package-selected-packages
-   '(org-mode org org-latex-preview citar-embark eldoc-mode embark git-gutter-fringe impatient-mode markdown-mode popper code-cells jupyter which-key-mode which-key python-mode pyvenv numpydoc anaconda anaconda-mode exec-path-from-shell pdf-tools auctex-latexmk consult adaptive-wrap visual-fill-column visual-fill-column-mode marginalia orderless magit nerd-icon expand-region iy-go-to-char treemacs highlight-indent-guides deft iv-go-to-char avy eglot vertico corfu use-package))
- '(package-vc-selected-packages
-   '((org-mode :url "https://code.tecosaur.net/tec/org-mode")
-     (org :url "https://code.tecosaur.net/tec/org-mode"))))
+   '(surround org-pomodoro tab-jump-out smartparens smartparens-mode puni org org-latex-preview eldoc-mode embark git-gutter-fringe impatient-mode markdown-mode popper code-cells jupyter which-key-mode which-key python-mode pyvenv numpydoc anaconda anaconda-mode exec-path-from-shell pdf-tools auctex-latexmk consult adaptive-wrap visual-fill-column visual-fill-column-mode marginalia orderless nerd-icon expand-region iy-go-to-char treemacs highlight-indent-guides deft iv-go-to-char avy eglot vertico corfu use-package)))
 
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
